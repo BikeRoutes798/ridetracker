@@ -2,7 +2,7 @@
 
 [![Website](https://img.shields.io/badge/Visit-Site-00bcd4?style=for-the-badge&logo=google-chrome&logoColor=white)](https://bikeroutes798.github.io/ridetracker/)
 
-Um site simples e intuitivo para ciclistas visualizarem e organizarem os seus percursos GPX 🚵‍♀️📍
+Um site simples e intuitivo para ciclistas visualizarem e organizarem os seus percursos GPX 
 
 ---
 
@@ -18,7 +18,7 @@ Um site simples e intuitivo para ciclistas visualizarem e organizarem os seus pe
 
 ---
 
-## 🔧 Tecnologias Usadas
+## 🔧 Tecnologias usadas
 
 | Tecnologia | Descrição |
 |-----------|-----------|
@@ -32,33 +32,22 @@ Um site simples e intuitivo para ciclistas visualizarem e organizarem os seus pe
 
 ---
 
-## 📸 Capturas de Ecrã
 
-> Podes adicionar aqui imagens ou gifs do site em funcionamento.  
-> Basta fazer upload para o repositório e usar o link como:
-> `![Descrição](caminho/para/imagem.png)`
-
----
-
-## 🚀 Começa já
+## 🚀 Experimenta o site
 
 1. Acede ao site:  
    👉 [https://bikeroutes798.github.io/ridetracker/](https://bikeroutes798.github.io/ridetracker/)
 
 2. Faz upload de um ficheiro `.gpx`
 
-3. Visualiza o percurso, gráfico e guarda no histórico!
+3. Visualiza o percurso, gráfico
 
 ---
 
 ## 📬 Contacto
 
-Criado com ❤️ por [O Teu Nome]  
-Se tiveres sugestões ou feedback, estás à vontade para abrir uma *issue* ou contactar.
+Criado com Gonçalo Adrião.  
 
 ---
 
-## 🪪 Licença
-
-Este projeto é livre para uso educativo. Podes adaptá-lo e melhorá-lo!
 
