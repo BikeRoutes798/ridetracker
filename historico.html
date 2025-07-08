@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RideTraker - Histórico</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* Reset básico para box-sizing */
+    * {
+      box-sizing: border-box;
+    }
+
+    /* Estilos globais para corpo e html */
+    body, html {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(to bottom right, #f0f4f8, #d9e2ec);
+      color: #1f2937;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* Navegação fixa com fundo semi-transparente e efeito blur */
+    nav {
+      background-color: rgba(17, 24, 39, 0.75);
+      backdrop-filter: saturate(180%) blur(10px);
+      -webkit-backdrop-filter: saturate(180%) blur(10px);
+      color: white;
+      display: flex;
+      align-items: center;
+      padding: 0.75rem 1.5rem;
+      gap: 1.5rem;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      box-shadow: 0 2px 4px rgb(0 0 0 / 0.2);
+    }
+
+    /* Estilo dos links do menu */
+    nav a {
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.1rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      transition: background-color 0.3s ease;
+    }
+
+    /* Link ativo e hover */
+    nav a:hover,
+    nav a.active {
+      background-color: #10b981;
+      color: #111827;
+    }
+
+    /* Título no nav, alinhado à esquerda */
+    nav .title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-right: auto;
+      user-select: none;
+    }
+
+    /* Container principal com margem para evitar sobreposição do nav fixo */
+    main {
+      max-width: 800px;
+      margin: 6rem auto 2rem;
+      padding: 0 1.5rem;
+    }
+
+    /* Títulos da página */
+    h1 {
+      margin-bottom: 0.5rem;
+    }
+
+    /* Texto mostrando o total de atividades */
+    #totalAtividades {
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    /* Estilo do container de cada atividade no histórico */
+    .atividade {
+      background-color: #e5e7eb;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      cursor: default;
+      transition: background-color 0.2s ease;
+      position: relative;
+    }
+
+    /* Efeito hover para destacar a atividade */
+    .atividade:hover {
+      background-color: #d1d5db;
+    }
+
+    /* Título clicável da atividade */
+    .atividade h3 {
+      margin: 0;
+      cursor: pointer;
+      color: #10b981;
+    }
+
+    /* Parágrafo com info da atividade */
+    .atividade p {
+      margin: 0.3rem 0;
+    }
+
+    /* Botão para marcar/desmarcar favorito */
+    .btn-favorito {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      font-size: 1.4rem;
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.3s ease;
+      color: #6b7280;
+    }
+
+    /* Cor diferente para favorito ativo */
+    .btn-favorito.favorito {
+      color: #f59e0b;
+    }
+
+    /* Efeito hover do botão favorito */
+    .btn-favorito:hover {
+      color: #d97706;
+    }
+
+    /* Botão de limpar histórico */
+    .limpar-btn {
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      background-color: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    /* Efeito hover do botão limpar */
+    .limpar-btn:hover {
+      background-color: #dc2626;
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+   <div class="title">
+    <img src="img/ridertracker.svg"  style="width:24px; height:24px; vertical-align:middle; margin-right: 8px;">
+    RideTracker
+  </div>
+    <a href="index.html">Início</a>
+    <a href="viewer.html">Importar Rotas</a>
+    <a href="historico.html" class="active">Histórico</a>
+  </nav>
+
+  <main>
+    <h1>Histórico de Atividades</h1>
+    <h2 id="totalAtividades">Total de Atividades: 0</h2>
+    <div id="listaHistorico"></div>
+
+    <!-- Botão para limpar todo o histórico -->
+    <button class="limpar-btn" onclick="limparHistorico()">Limpar Histórico</button>
+  </main>
+
+  <script>
+    // Função para carregar e mostrar as atividades do histórico
+    function carregarHistorico() {
+      const lista = document.getElementById('listaHistorico');
+      const atividades = JSON.parse(localStorage.getItem('atividades') || '[]');
+      lista.innerHTML = '';
+
+      // Atualiza o contador de atividades
+      document.getElementById('totalAtividades').textContent = `Total de Atividades: ${atividades.length}`;
+
+      if (atividades.length === 0) {
+        lista.innerHTML = '<p>Nenhuma atividade registrada.</p>';
+        return;
+      }
+
+      // Para cada atividade, cria um bloco visual com título, info, favorito e botão apagar
+      atividades.forEach((atv, index) => {
+        const div = document.createElement('div');
+        div.className = 'atividade';
+
+        div.innerHTML = `
+          <h3 onclick="abrirAtividade(${index})">${atv.nome}</h3>
+          <p>${atv.info}</p>
+          <button class="btn-favorito ${atv.favorito ? 'favorito' : ''}" title="Favorito" onclick="toggleFavorito(event, ${index})">
+            ${atv.favorito ? '⭐' : '☆'}
+          </button>
+          <button class="limpar-btn" style="margin-top: 0.5rem; background-color: #6b7280;" onclick="removerAtividade(${index})">Apagar</button>
+        `;
+
+        lista.appendChild(div);
+      });
+    }
+
+    // Redireciona para viewer.html com a atividade selecionada salva no localStorage
+    function abrirAtividade(index) {
+      const atividades = JSON.parse(localStorage.getItem('atividades') || '[]');
+      const atividadeSelecionada = atividades[index];
+      localStorage.setItem('atividadeSelecionada', JSON.stringify(atividadeSelecionada));
+      window.location.href = 'viewer.html';
+    }
+
+    // Marca ou desmarca uma atividade como favorita
+    function toggleFavorito(event, index) {
+      event.stopPropagation(); // evita disparar evento de abrirAtividade
+
+      const atividades = JSON.parse(localStorage.getItem('atividades') || '[]');
+      atividades[index].favorito = !atividades[index].favorito;
+      localStorage.setItem('atividades', JSON.stringify(atividades));
+      carregarHistorico(); // atualiza a lista para refletir mudança
+    }
+
+    // Remove uma atividade do histórico após confirmação
+    function removerAtividade(index) {
+      if (confirm('Deseja apagar esta atividade?')) {
+        const atividades = JSON.parse(localStorage.getItem('atividades') || '[]');
+        atividades.splice(index, 1);
+        localStorage.setItem('atividades', JSON.stringify(atividades));
+        carregarHistorico();
+      }
+    }
+
+    // Limpa todo o histórico de atividades após confirmação
+    function limparHistorico() {
+      if (confirm('Tem certeza que deseja apagar todo o histórico?')) {
+        localStorage.removeItem('atividades');
+        carregarHistorico();
+      }
+    }
+
+    // Chamada inicial para exibir o histórico assim que a página carrega
+    carregarHistorico();
+  </script>
+
+</body>
+</html>

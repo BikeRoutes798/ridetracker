@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <!-- Configurações base -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RideTraker - Visualizar Rotas</title>
+
+  <!-- Fonte Inter (Google Fonts) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+  <!-- Estilo da biblioteca Leaflet (para mapas) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    /* Estilos gerais da página */
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: 'Inter', sans-serif;
+      background-color: #f0f4f8;
+      background-image: linear-gradient(to bottom right, #f0f4f8, #d9e2ec);
+      background-attachment: fixed;
+      color: #1f2937;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* Barra de navegação com fundo escuro e blur */
+    nav {
+      background-color: rgba(17, 24, 39, 0.75);
+      backdrop-filter: saturate(180%) blur(10px);
+      color: white;
+      display: flex;
+      align-items: center;
+      padding: 0.75rem 1.5rem;
+      gap: 1.5rem;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      box-shadow: 0 2px 4px rgb(0 0 0 / 0.2);
+    }
+
+    nav a {
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.1rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      transition: background-color 0.3s ease;
+    }
+
+    nav a:hover, nav a.active {
+      background-color: #10b981; /* verde */
+      color: #111827;
+    }
+
+    nav .title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-right: auto;
+      user-select: none;
+    }
+
+    /* Botão modo escuro (não usado aqui mas preparado) */
+    #toggleDarkMode {
+      background-color: #1f2937;
+      color: #ffffff;
+      border: none;
+      padding: 0.4rem 0.8rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    /* Conteúdo principal */
+    .container {
+      max-width: 960px;
+      margin: 6rem auto 2rem;
+      padding: 0 1.25rem;
+    }
+
+    /* Área do mapa */
+    #map {
+      height: 400px;
+      width: 100%;
+      border-radius: 10px;
+      margin-top: 1rem;
+    }
+
+    /* Gráfico de elevação */
+    canvas {
+      width: 100% !important;
+      height: 300px !important;
+      margin-top: 1rem;
+      display: block;
+    }
+
+    /* Classe oculta */
+    .oculto {
+      display: none;
+    }
+
+    /* Estilo das atividades no histórico */
+    .atividade {
+      background-color: #e5e7eb;
+      margin: 0.5rem 0;
+      padding: 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    /* Adaptação do estilo para modo escuro */
+    body.dark-mode .atividade {
+      background-color: #374151;
+    }
+
+    body.dark-mode #toggleDarkMode {
+      background-color: #facc15;
+      color: #1f2937;
+    }
+  </style>
+
+  <!-- Bibliotecas externas -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <nav>
+    <div class="title">
+    <img src="img/ridertracker.svg"  style="width:24px; height:24px; vertical-align:middle; margin-right: 8px;">
+    RideTracker
+  </div>
+    <a href="index.html"> Início</a>
+    <a href="viewer.html" class="active">Importar Rotas</a>
+    <a href="historico.html"> Histórico</a>
+  </nav>
+
+  <!-- Área de conteúdo -->
+  <div class="container">
+    <!-- Botão para escolher ficheiro GPX -->
+    <input type="file" id="gpxInput" accept=".gpx">
+
+    <!-- Mapa Leaflet -->
+    <div id="map"></div>
+
+    <!-- Gráfico de elevação -->
+    <canvas id="elevacaoChart" class="oculto"></canvas>
+
+    <!-- Informação da atividade: distância, tempo, elevação -->
+    <div id="info" class="oculto"></div>
+
+    <!-- Histórico de atividades (não visível nesta página) -->
+    <section class="historico oculto">
+      <h2>Histórico de Atividades</h2>
+      <div id="listaHistorico"></div>
+    </section>
+  </div>
+
+  <!-- Scripts principais -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/togeojson@0.16.0/togeojson.min.js"></script>
+
+  <script>
+    // Inicialização do mapa
+    const map = L.map('map').setView([0, 0], 2);
+    let rotaAtual;
+    let chart;
+
+    // Adiciona camada base do OpenStreetMap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Função para carregar histórico guardado no localStorage
+    function carregarHistorico() {
+      const lista = document.getElementById('listaHistorico');
+      const atividades = JSON.parse(localStorage.getItem('atividades') || '[]');
+      lista.innerHTML = '';
+
+      if (atividades.length === 0) {
+        lista.innerHTML = '<p>Nenhuma atividade registrada.</p>';
+        return;
+      }
+
+      // Cria blocos para cada atividade
+      atividades.forEach((atv) => {
+        const div = document.createElement('div');
+        div.className = 'atividade';
+        div.innerHTML = `<h3 style="cursor:pointer; color:#10b981;">${atv.nome}</h3>${atv.info}`;
+        div.addEventListener('click', () => {
+          localStorage.setItem('atividadeSelecionada', JSON.stringify(atv));
+          window.location.href = 'viewer.html';
+        });
+        lista.appendChild(div);
+      });
+    }
+
+    // Se o utilizador clicou numa atividade do histórico, mostrar automaticamente
+    const atividadeSalva = localStorage.getItem('atividadeSelecionada');
+    if (atividadeSalva) {
+      const dados = JSON.parse(atividadeSalva);
+      mostrarAtividade(dados);
+      localStorage.removeItem('atividadeSelecionada');
+    }
+
+    // Guarda uma nova atividade no histórico
+    function guardarAtividade(atividade) {
+      const historico = JSON.parse(localStorage.getItem('atividades') || '[]');
+      historico.push(atividade);
+      localStorage.setItem('atividades', JSON.stringify(historico));
+      carregarHistorico();
+    }
+
+    // Gera o gráfico de elevação com Chart.js
+    function mostrarGraficoElevacao(coords) {
+      const distAcumulada = [0];
+      const elevacoes = [coords[0][2] || 0];
+
+      for (let i = 1; i < coords.length; i++) {
+        const dist = map.distance(
+          [coords[i - 1][1], coords[i - 1][0]],
+          [coords[i][1], coords[i][0]]
+        );
+        distAcumulada.push(distAcumulada[i - 1] + dist);
+        elevacoes.push(coords[i][2] || elevacoes[i - 1]);
+      }
+
+      const labels = distAcumulada.map(d => (d / 1000).toFixed(2));
+
+      if (chart) chart.destroy();
+      const ctx = document.getElementById('elevacaoChart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Elevação (m)',
+            data: elevacoes,
+            borderColor: 'green',
+            backgroundColor: 'rgba(0, 128, 0, 0.1)',
+            fill: true,
+            pointRadius: 0,
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            tooltip: { enabled: true },
+            legend: { display: false }
+          },
+          scales: {
+            x: { title: { display: true, text: 'Distância (km)' } },
+            y: { title: { display: true, text: 'Elevação (m)' } }
+          }
+        }
+      });
+
+      document.getElementById('elevacaoChart').classList.remove('oculto');
+    }
+
+    // Mostra a rota e os dados no mapa e no gráfico
+    function mostrarAtividade(dados) {
+      if (rotaAtual) map.removeLayer(rotaAtual);
+      rotaAtual = L.geoJSON(dados.geojson).addTo(map);
+      map.fitBounds(rotaAtual.getBounds());
+      document.getElementById('info').innerHTML = dados.info;
+      document.getElementById('info').classList.remove('oculto');
+      mostrarGraficoElevacao(dados.geojson.features[0].geometry.coordinates);
+    }
+
+    // Evento de importação de ficheiro GPX
+    document.getElementById('gpxInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(event.target.result, "text/xml");
+        const geojson = toGeoJSON.gpx(xml);
+
+        // Mostra rota no mapa
+        if (rotaAtual) map.removeLayer(rotaAtual);
+        rotaAtual = L.geoJSON(geojson).addTo(map);
+        map.fitBounds(rotaAtual.getBounds());
+
+        // Pede nome da atividade ao utilizador
+        let nome = prompt("Dá um nome à tua rota:");
+        if (!nome || nome.trim() === "") {
+          nome = "Atividade";
+        }
+
+        // Calcula distância total
+        let dist = 0;
+        const coords = geojson.features[0].geometry.coordinates;
+        for (let i = 1; i < coords.length; i++) {
+          dist += map.distance(
+            [coords[i - 1][1], coords[i - 1][0]],
+            [coords[i][1], coords[i][0]]
+          );
+        }
+
+        // Calcula duração
+        const times = geojson.features[0].properties.coordTimes;
+        let tempo = "N/A";
+        if (times && times.length > 1) {
+          const inicio = new Date(times[0]);
+          const fim = new Date(times[times.length - 1]);
+          const duracaoMs = fim - inicio;
+          const horas = Math.floor(duracaoMs / 3600000);
+          const minutos = Math.floor((duracaoMs % 3600000) / 60000);
+          const segundos = Math.floor((duracaoMs % 60000) / 1000);
+          tempo = `${horas}h ${minutos}min ${segundos}s`;
+        }
+
+        // Calcula ganho de elevação
+        let elevacao = 0;
+        for (let i = 1; i < coords.length; i++) {
+          const altAnterior = coords[i - 1][2];
+          const altAtual = coords[i][2];
+          if (altAtual != null && altAnterior != null && altAtual > altAnterior) {
+            elevacao += altAtual - altAnterior;
+          }
+        }
+
+        // Mostra as informações
+        const infoHTML = `
+          <p><strong>Distância:</strong> ${(dist / 1000).toFixed(2)} km</p>
+          <p><strong>Duração da atividade:</strong> ${tempo}</p>
+          <p><strong>Ganho de elevação:</strong> ${elevacao.toFixed(0)} m</p>
+        `;
+        document.getElementById('info').innerHTML = infoHTML;
+        document.getElementById('info').classList.remove('oculto');
+
+        // Guarda e mostra tudo
+        guardarAtividade({ nome, geojson, info: infoHTML });
+        mostrarGraficoElevacao(coords);
+      };
+      reader.readAsText(file);
+    });
+
+    // Carrega o histórico se existir
+    carregarHistorico();
+  </script>
+</body>
+</html>
